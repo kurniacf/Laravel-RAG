@@ -140,3 +140,33 @@ test('generateSummary pada dokumen belum ready memunculkan pesan kesalahan', fun
 
     expect(Summary::where('document_id', $doc->id)->count())->toBe(0);
 });
+
+test('panel teks ekstraksi menampilkan jumlah kata untuk dokumen ber-teks', function () {
+    $owner = User::factory()->create();
+    $doc = makeShowDocument($owner);
+
+    $this->actingAs($owner);
+
+    Livewire::test(DocumentShow::class, ['document' => $doc])
+        ->assertOk()
+        ->assertSee('Teks Hasil Ekstraksi')
+        ->assertSee('kata');
+});
+
+test('panel teks ekstraksi menampilkan empty state bila dokumen tanpa teks', function () {
+    $owner = User::factory()->create();
+    $doc = Document::create([
+        'user_id' => $owner->id,
+        'title' => 'Tanpa Teks',
+        'original_filename' => 'kosong.pdf',
+        'file_path' => 'documents/'.$owner->id.'/kosong.pdf',
+        'file_size_bytes' => 100,
+        'status' => Document::STATUS_PENDING,
+    ]);
+
+    $this->actingAs($owner);
+
+    Livewire::test(DocumentShow::class, ['document' => $doc])
+        ->assertOk()
+        ->assertSee('Belum ada teks hasil ekstraksi');
+});

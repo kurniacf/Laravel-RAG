@@ -60,4 +60,92 @@ class Summary extends Model
             default => $type,
         };
     }
+
+    /**
+     * Pecah konten "ringkasan per bagian" menjadi daftar bagian terstruktur.
+     * Heading (markdown `#`..`####` atau baris yang seluruhnya **tebal**)
+     * memulai bagian baru. Teks sebelum heading pertama menjadi bagian tanpa
+     * judul. Bila tak ada heading sama sekali, seluruh konten dikembalikan
+     * sebagai satu bagian tanpa judul (fallback agar tab tidak terlihat kosong).
+     *
+     * @return array<int, array{title: string, body: string}>
+     */
+    public function sections(): array
+    {
+        $lines = preg_split('/\r?\n/', (string) $this->content) ?: [];
+
+        $sections = [];
+        $current = null;
+
+        foreach ($lines as $rawLine) {
+            $line = trim($rawLine);
+
+            if ($line === '') {
+                continue;
+            }
+
+            $heading = $this->detectHeading($line);
+
+            if ($heading !== null) {
+                if ($current !== null) {
+                    $sections[] = $current;
+                }
+                $current = ['title' => $heading, 'body' => ''];
+
+                continue;
+            }
+
+            if ($current === null) {
+                $current = ['title' => '', 'body' => ''];
+            }
+
+            $current['body'] = $current['body'] === ''
+                ? $line
+                : $current['body']."\n".$line;
+        }
+
+        if ($current !== null) {
+            $sections[] = $current;
+        }
+
+        return $sections;
+    }
+
+    /**
+     * Pecah konten "poin kunci" menjadi daftar poin, membuang penanda bullet
+     * atau nomor di awal tiap baris.
+     *
+     * @return array<int, string>
+     */
+    public function points(): array
+    {
+        $lines = preg_split('/\r?\n/', (string) $this->content) ?: [];
+
+        return collect($lines)
+            ->map(fn ($line) => trim($line))
+            ->filter(fn ($line) => $line !== '')
+            ->map(fn ($line) => trim((string) preg_replace('/^\s*(?:[-*•‣◦]|\d+[.)])\s+/u', '', $line)))
+            ->filter(fn ($line) => $line !== '')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Deteksi apakah sebuah baris adalah heading bagian. Mengembalikan judul
+     * tanpa penanda, atau null bila baris tersebut bukan heading.
+     */
+    protected function detectHeading(string $line): ?string
+    {
+        // Markdown ATX heading: "# ", "## ", "### ", "#### ".
+        if (preg_match('/^#{1,4}\s+(.+)$/u', $line, $m)) {
+            return trim($m[1]);
+        }
+
+        // Baris yang seluruhnya tebal: "**Judul**" atau "**Judul:**".
+        if (preg_match('/^\*\*([^*]+?)\*\*:?$/u', $line, $m)) {
+            return trim($m[1]);
+        }
+
+        return null;
+    }
 }

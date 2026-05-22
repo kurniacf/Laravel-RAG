@@ -162,19 +162,29 @@ class SummaryService
             TXT,
             Summary::TYPE_PER_CHAPTER => <<<TXT
             Buat RINGKASAN PER BAGIAN dari materi berjudul "{$documentTitle}".
-            Bagi materi menjadi 3-7 bagian/subtopik logis sesuai urutan
-            pembahasannya. Tulis SETIAP bagian dengan format persis:
-            ### Judul Bagian
-            Ringkasan 1-3 kalimat untuk bagian tersebut.
+            Pecah materi menjadi 3-6 bagian/subtopik logis sesuai urutan
+            pembahasannya; bila tidak ada bab eksplisit, kelompokkan
+            berdasarkan topik yang muncul. Hasil ini HARUS berbeda dari
+            ringkasan eksekutif — bukan satu paragraf utuh, melainkan
+            beberapa bagian terpisah.
 
-            Pisahkan antar bagian dengan satu baris kosong.
+            Tulis SETIAP bagian dengan format PERSIS seperti ini:
+            ### Judul Bagian
+            Penjelasan 1-3 kalimat untuk bagian tersebut.
+
+            Aturan: judul bagian singkat (3-7 kata) dan SELALU diawali "### ";
+            pisahkan antar bagian dengan satu baris kosong; jangan menomori
+            judul; jangan menulis kalimat pembuka sebelum bagian pertama.
             TXT,
             Summary::TYPE_KEY_POINTS => <<<TXT
             Buat DAFTAR POIN KUNCI dari materi berjudul "{$documentTitle}" —
             hal-hal terpenting yang wajib diingat pelajar. Tulis 5-8 poin.
-            Setiap poin pada barisnya sendiri dan diawali tanda "- " (tanda
-            hubung diikuti spasi). Tiap poin maksimal 2 kalimat. Jangan beri
-            penomoran dan jangan subjudul.
+
+            Format PERSIS: setiap poin pada barisnya sendiri dan diawali
+            tanda "- " (tanda hubung lalu spasi). Tiap poin memuat satu
+            gagasan utuh, ringkas (maksimal 2 kalimat), dan bisa dipahami
+            berdiri sendiri. Jangan menomori, jangan memberi subjudul, dan
+            jangan menulis kalimat pembuka.
             TXT,
             default => throw new RuntimeException("Tipe ringkasan tidak dikenal: {$type}"),
         };

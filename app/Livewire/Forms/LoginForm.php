@@ -39,6 +39,9 @@ class LoginForm extends Form
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        // Catat waktu login terakhir untuk ditampilkan di halaman Profil.
+        Auth::user()->forceFill(['last_login_at' => now()])->save();
     }
 
     /**

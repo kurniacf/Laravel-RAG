@@ -256,43 +256,51 @@
                             @elseif ($type === Summary::TYPE_EXECUTIVE)
                                 <p class="whitespace-pre-line text-sm leading-relaxed text-slate-700">{{ $summary->content }}</p>
                             @elseif ($type === Summary::TYPE_PER_CHAPTER)
-                                <div class="space-y-3">
-                                    @foreach (preg_split('/\r?\n/', $summary->content) as $rawLine)
-                                        @php $line = trim($rawLine); @endphp
-                                        @if ($line === '')
-                                            @continue
-                                        @endif
-                                        @if (Str::startsWith($line, ['### ', '## ', '# ']))
-                                            <h3 class="text-sm font-semibold text-slate-900">
-                                                {{ trim(ltrim($line, '# ')) }}
-                                            </h3>
-                                        @else
-                                            <p class="text-sm leading-relaxed text-slate-600">{{ $line }}</p>
-                                        @endif
-                                    @endforeach
-                                </div>
+                                @php $sections = $summary->sections(); @endphp
+                                @if (count($sections) === 1 && $sections[0]['title'] === '')
+                                    {{-- Struktur per bagian tidak terdeteksi — tampilkan apa adanya + keterangan. --}}
+                                    <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                                        Struktur per bagian tidak terdeteksi pada hasil ini. Klik "Buat ulang" bila ingin mencoba lagi.
+                                    </p>
+                                    <p class="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600">{{ $sections[0]['body'] }}</p>
+                                @else
+                                    <div class="space-y-4">
+                                        @foreach ($sections as $i => $section)
+                                            <div class="border-l-2 border-brand-200 pl-4">
+                                                @if ($section['title'] !== '')
+                                                    <h3 class="text-sm font-semibold text-slate-900">
+                                                        <span class="text-brand-600">{{ $i + 1 }}.</span>
+                                                        {{ $section['title'] }}
+                                                    </h3>
+                                                @endif
+                                                @if ($section['body'] !== '')
+                                                    <p class="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600">{{ $section['body'] }}</p>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
                             @else
-                                {{-- key_points --}}
-                                @php
-                                    $points = collect(preg_split('/\r?\n/', $summary->content))
-                                        ->map(fn ($l) => trim($l))
-                                        ->filter(fn ($l) => $l !== '')
-                                        ->map(fn ($l) => trim(preg_replace('/^[-•*\d.\)]+\s*/u', '', $l)))
-                                        ->filter(fn ($l) => $l !== '')
-                                        ->values();
-                                @endphp
-                                <ul class="space-y-2.5">
-                                    @foreach ($points as $point)
-                                        <li class="flex gap-2.5">
-                                            <span class="mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full bg-brand-50 text-brand-600">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
-                                                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
-                                                </svg>
-                                            </span>
-                                            <span class="text-sm leading-relaxed text-slate-700">{{ $point }}</span>
-                                        </li>
-                                    @endforeach
-                                </ul>
+                                {{-- Poin kunci. --}}
+                                @php $points = $summary->points(); @endphp
+                                @if (empty($points))
+                                    <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                                        Poin kunci tidak terdeteksi pada hasil ini. Klik "Buat ulang" untuk mencoba lagi.
+                                    </p>
+                                @else
+                                    <ul class="space-y-2.5">
+                                        @foreach ($points as $point)
+                                            <li class="flex gap-2.5">
+                                                <span class="mt-0.5 inline-flex h-5 w-5 flex-none items-center justify-center rounded-full bg-brand-50 text-brand-600">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5">
+                                                        <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </span>
+                                                <span class="text-sm leading-relaxed text-slate-700">{{ $point }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
                             @endif
 
                             @if ($summary)
@@ -453,27 +461,97 @@
             @endunless
         </div>
 
-        {{-- ───────── Preview teks ekstraksi ───────── --}}
-        @if ($d->extracted_text)
-            <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" x-data="{ open: false }">
-                <button
-                    type="button"
-                    x-on:click="open = ! open"
-                    class="flex w-full items-center justify-between px-6 py-4 text-left"
-                >
-                    <span class="text-sm font-semibold text-slate-900">Teks hasil ekstraksi</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4 text-slate-400 transition" :class="open && 'rotate-180'">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
-                </button>
-                <div x-show="open" x-cloak class="border-t border-slate-200 px-6 py-4">
-                    <div class="max-h-72 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700">
-                        {{ Str::limit($d->extracted_text, 3000, '... [dipotong]') }}
+        {{-- ───────── Teks hasil ekstraksi ───────── --}}
+        @php
+            $extractedText = (string) ($d->extracted_text ?? '');
+            $charCount = mb_strlen($extractedText);
+            $wordCount = $extractedText === ''
+                ? 0
+                : count(preg_split('/\s+/u', trim($extractedText), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        @endphp
+        <div
+            class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+            x-data="{
+                open: false,
+                copied: false,
+                copyText(el) {
+                    const text = el.innerText;
+                    const done = () => { this.copied = true; setTimeout(() => this.copied = false, 2000); };
+                    if (navigator.clipboard && window.isSecureContext) {
+                        navigator.clipboard.writeText(text).then(done).catch(() => {});
+                    } else {
+                        const ta = document.createElement('textarea');
+                        ta.value = text;
+                        ta.style.position = 'fixed';
+                        ta.style.opacity = '0';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); done(); } catch (e) {}
+                        document.body.removeChild(ta);
+                    }
+                },
+            }"
+        >
+            <button
+                type="button"
+                x-on:click="open = ! open"
+                class="flex w-full items-center justify-between gap-3 px-6 py-4 text-left transition hover:bg-slate-50/60"
+            >
+                <span class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-semibold text-slate-900">Teks Hasil Ekstraksi</span>
+                    @if ($charCount > 0)
+                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                            {{ number_format($wordCount) }} kata
+                        </span>
+                    @endif
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4 flex-none text-slate-400 transition" :class="open && 'rotate-180'">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+            </button>
+
+            <div x-show="open" x-cloak x-transition class="border-t border-slate-200 px-6 py-4">
+                @if ($charCount === 0)
+                    {{-- Empty state. --}}
+                    <div class="py-8 text-center">
+                        <span class="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" class="h-5 w-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                            </svg>
+                        </span>
+                        <p class="mt-3 text-sm font-medium text-slate-700">Belum ada teks hasil ekstraksi</p>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Dokumen ini belum diproses, atau teksnya tidak berhasil diekstrak dari PDF.
+                        </p>
                     </div>
-                    <p class="mt-1 text-[10px] text-slate-400">Menampilkan 3.000 karakter pertama untuk preview.</p>
-                </div>
+                @else
+                    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-xs text-slate-500">
+                            {{ number_format($charCount) }} karakter
+                            <span class="mx-1 text-slate-300">·</span>
+                            {{ number_format($wordCount) }} kata
+                        </p>
+                        <button
+                            type="button"
+                            x-on:click="copyText($refs.extractedText)"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                            <svg x-show="! copied" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-3.5 w-3.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m11.25 5.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                            </svg>
+                            <svg x-show="copied" x-cloak xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 text-brand-600">
+                                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                            </svg>
+                            <span x-text="copied ? 'Tersalin' : 'Salin teks'"></span>
+                        </button>
+                    </div>
+                    <div
+                        x-ref="extractedText"
+                        class="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-4 font-mono text-xs leading-relaxed text-slate-700"
+                    >{{ $extractedText }}</div>
+                @endif
             </div>
-        @endif
+        </div>
 
     </div>
 </div>
