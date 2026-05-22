@@ -1,0 +1,28 @@
+# Docker Compose untuk PintarBelajar AI
+# PostgreSQL 16 + pgvector untuk kebutuhan RAG (penyimpanan embedding).
+# Port host 5440 dipilih agar tidak bentrok dengan PostgreSQL bawaan Herd (5432)
+# maupun container PostgreSQL milik project lain di mesin ini (5434, 15432).
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: pintarbelajar_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pintarbelajar
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5440:5432"
+    volumes:
+      - pintarbelajar_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laravel -d pintarbelajar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  pintarbelajar_db_data:
+    name: pintarbelajar_db_data

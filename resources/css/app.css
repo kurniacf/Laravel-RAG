@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+    /* Font keluarga: Inter (variable) sebagai default sans, fallback ke sistem. */
+    --font-sans: "Inter", "Inter Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    /* Brand utama: emerald — dipakai untuk aksen, tombol primer, fokus ring. */
+    --color-brand-50:  #ecfdf5;
+    --color-brand-100: #d1fae5;
+    --color-brand-200: #a7f3d0;
+    --color-brand-300: #6ee7b7;
+    --color-brand-400: #34d399;
+    --color-brand-500: #10b981;
+    --color-brand-600: #059669;
+    --color-brand-700: #047857;
+    --color-brand-800: #065f46;
+    --color-brand-900: #064e3b;
+    --color-brand-950: #022c22;
+}
+
+@layer base {
+    html {
+        font-feature-settings: "cv11", "ss01", "ss03";
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
+    /* Angka tabular untuk kartu statistik agar perubahan nilai tidak menggeser layout. */
+    .tabular-nums {
+        font-variant-numeric: tabular-nums;
+    }
+}
