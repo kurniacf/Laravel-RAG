@@ -15,6 +15,16 @@ new #[Layout('layouts.app'), Title('Dashboard')] class extends Component
 
     public int $jumlahPengguna = 0;
 
+    /** Statistik fitur AI Tier 2. */
+    public int $jumlahRingkasan = 0;
+
+    public int $jumlahKuis = 0;
+
+    public int $jumlahKuisDikerjakan = 0;
+
+    /** Rata-rata skor kuis milik user (null bila belum pernah mengerjakan). */
+    public ?int $rataRataSkor = null;
+
     /** @var array<int, object> */
     public array $dokumenTerbaru = [];
 
@@ -52,6 +62,32 @@ new #[Layout('layouts.app'), Title('Dashboard')] class extends Component
 
         if (Schema::hasTable('subjects')) {
             $this->jumlahMataPelajaran = DB::table('subjects')->count();
+        }
+
+        // Statistik Tier 2: ringkasan & kuis ikut scoping role (admin lihat semua);
+        // kuis dikerjakan & rata-rata skor selalu milik user yang login.
+        if (Schema::hasTable('summaries')) {
+            $this->jumlahRingkasan = DB::table('summaries')
+                ->join('documents', 'summaries.document_id', '=', 'documents.id')
+                ->when(! $user->isAdmin(), fn ($q) => $q->where('documents.user_id', $user->id))
+                ->count();
+        }
+
+        if (Schema::hasTable('quizzes')) {
+            $this->jumlahKuis = DB::table('quizzes')
+                ->when(! $user->isAdmin(), fn ($q) => $q->where('user_id', $user->id))
+                ->count();
+        }
+
+        if (Schema::hasTable('quiz_attempts')) {
+            $attempts = DB::table('quiz_attempts')
+                ->where('user_id', $user->id)
+                ->where('status', 'completed');
+
+            $this->jumlahKuisDikerjakan = (clone $attempts)->count();
+
+            $avg = (clone $attempts)->avg('score');
+            $this->rataRataSkor = $avg !== null ? (int) round($avg) : null;
         }
 
         $this->jumlahPengguna = User::query()->count();
@@ -246,6 +282,60 @@ new #[Layout('layouts.app'), Title('Dashboard')] class extends Component
             </div>
         </section>
 
+        {{-- ──────── Aktivitas Belajar (Tier 2) ──────── --}}
+        <section>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-500">Aktivitas Belajar</h2>
+            <div class="mt-3 grid grid-cols-2 gap-4 lg:grid-cols-4">
+
+                {{-- Ringkasan dibuat --}}
+                <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" class="h-5 w-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                        </svg>
+                    </span>
+                    <p class="mt-3 text-sm font-medium text-slate-600">Ringkasan Dibuat</p>
+                    <p class="mt-1 text-2xl font-bold tabular-nums text-slate-900">{{ number_format($jumlahRingkasan) }}</p>
+                </article>
+
+                {{-- Kuis dibuat --}}
+                <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" class="h-5 w-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                    </span>
+                    <p class="mt-3 text-sm font-medium text-slate-600">Kuis Dibuat</p>
+                    <p class="mt-1 text-2xl font-bold tabular-nums text-slate-900">{{ number_format($jumlahKuis) }}</p>
+                </article>
+
+                {{-- Kuis dikerjakan --}}
+                <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" class="h-5 w-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                        </svg>
+                    </span>
+                    <p class="mt-3 text-sm font-medium text-slate-600">Kuis Dikerjakan</p>
+                    <p class="mt-1 text-2xl font-bold tabular-nums text-slate-900">{{ number_format($jumlahKuisDikerjakan) }}</p>
+                </article>
+
+                {{-- Rata-rata skor --}}
+                <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" class="h-5 w-5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                        </svg>
+                    </span>
+                    <p class="mt-3 text-sm font-medium text-slate-600">Rata-rata Skor Kuis</p>
+                    <p class="mt-1 text-2xl font-bold tabular-nums text-slate-900">
+                        {{ $rataRataSkor !== null ? $rataRataSkor : '—' }}
+                    </p>
+                </article>
+
+            </div>
+        </section>
+
         {{-- ──────── Dokumen Terbaru ──────── --}}
         <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
@@ -344,10 +434,8 @@ new #[Layout('layouts.app'), Title('Dashboard')] class extends Component
             </p>
             <ul class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 @foreach ([
-                    ['Chat berbasis RAG', 'Tanya jawab kontekstual dari dokumenmu sendiri.'],
-                    ['Ringkasan Otomatis', 'Tangkap poin utama tiap bab.'],
-                    ['Kuis Adaptif', 'Soal otomatis dari materi yang sudah dipelajari.'],
-                    ['Flashcard', 'Poin kunci untuk repetisi terjadwal.'],
+                    ['Flashcard Otomatis', 'Poin kunci dari dokumen untuk repetisi terjadwal.'],
+                    ['Analitik Belajar', 'Pemetaan progres pemahaman lintas dokumen dan kuis.'],
                 ] as $i => [$title, $desc])
                     <li class="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/50 p-3 transition hover:bg-white">
                         <span class="mt-0.5 inline-flex h-6 w-6 flex-none items-center justify-center rounded-full bg-white text-xs font-semibold text-brand-700 ring-1 ring-brand-200">

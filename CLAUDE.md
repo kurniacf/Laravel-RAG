@@ -140,7 +140,7 @@ dengan operator `vector_cosine_ops` dibuat di migration (pgsql only).
 | ------------- | ------------ | ------------------------------------------------ |
 | id            | bigserial PK |                                                  |
 | document_id   | FK documents | cascade                                          |
-| job_type      | enum         | `parse`, `chunk`, `embed`                        |
+| job_type      | enum         | `parse`, `chunk`, `embed`, `summarize`, `quiz_gen` |
 | status        | enum         | `pending`, `running`, `completed`, `failed`      |
 | started_at    | timestamp    | nullable                                         |
 | finished_at   | timestamp    | nullable                                         |
@@ -180,6 +180,31 @@ Index: `(user_id, last_message_at)`, `document_id`.
 | updated_at        | timestamp           |                                                  |
 
 Index: `(chat_session_id, created_at)`.
+
+### 4.8 Tabel Tier 2 — Summary & Quiz
+
+Ditambahkan untuk Auto-Summary dan Adaptive Quiz. Semua FK `ON DELETE
+CASCADE` kecuali disebut lain; CHECK constraint enum hanya di PostgreSQL.
+
+- **`summaries`** — ringkasan otomatis. Kolom utama: `document_id`, `type`
+  (`executive` | `per_chapter` | `key_points`), `content`, `word_count`,
+  `tokens_used`, `model_used`. Unique `(document_id, type)` → "Buat ulang"
+  me-replace baris lewat `updateOrCreate`.
+- **`quizzes`** — `document_id`, `user_id`, `title`, `difficulty`
+  (`easy` | `medium` | `hard`), `question_count`, `total_attempts`,
+  `average_score` (persen 0-100, denormalisasi).
+- **`quiz_questions`** — `quiz_id`, `source_chunk_id` (FK `document_chunks`,
+  `nullOnDelete` — traceability soal ke chunk), `type` (`mcq` |
+  `true_false` | `short_answer`), `question_text`, `correct_answer`,
+  `explanation`, `difficulty`, `position`.
+- **`quiz_options`** — `quiz_question_id`, `option_text`, `is_correct`,
+  `position`. mcq = 4 opsi, true_false = 2 (Benar/Salah), short_answer = 0.
+- **`quiz_attempts`** — `quiz_id`, `user_id`, `status` (`in_progress` |
+  `completed`), `score`, `correct_count`, `total_questions`,
+  `time_spent_seconds`, `started_at`, `completed_at`.
+- **`quiz_answers`** — `quiz_attempt_id`, `quiz_question_id`,
+  `selected_option_id` (mcq/true_false), `answer_text` (short_answer),
+  `is_correct`.
 
 ---
 
@@ -235,6 +260,18 @@ Hal-hal yang gampang menjebak:
 - **Urutan migration chat penting.** `create_chat_messages_table` punya FK
   ke `chat_sessions`, jadi timestamp filenya harus LEBIH BESAR daripada
   `create_chat_sessions_table` (alfabetis Laravel = kronologis).
+- **Quiz butuh chunk, ringkasan tidak.** `QuizGeneratorService` sampling
+  dari `document_chunks` (untuk `source_chunk_id`), jadi tombol "Buat Kuis"
+  hanya aktif bila `total_chunks > 0` (dokumen sudah "Proses ke Vector").
+  Auto-Summary cukup butuh `status=ready` + `extracted_text`.
+- **CHECK constraint `ai_jobs.job_type`** diperluas lewat migration terpisah
+  (`extend_ai_jobs_job_type_check`), bukan dengan mengedit migration lama.
+  Menambah job_type baru = tambah migration baru yang drop & recreate
+  constraint.
+- **JSON dari Gemini** untuk quiz diminta via `responseMimeType` di
+  `generationConfig` (parameter `response_mime_type` pada
+  `GeminiChatService::generate`). Tetap di-parse defensif (strip markdown
+  fence) + retry, karena LLM kadang tetap mengembalikan JSON cacat.
 
 ---
 
@@ -268,11 +305,15 @@ Hal-hal yang gampang menjebak:
 - [x] `RagService`, `GeminiChatService`, model `ChatSession` + `ChatMessage`
 - [x] Riwayat chat per dokumen tersimpan dan dapat dibuka kembali
 
-### Berikutnya (Tier 2)
-- [ ] Ringkasan otomatis per dokumen
-- [ ] Generate kuis dari dokumen
+### Tier 2 RAG (sudah selesai)
+- [x] Auto-Summary tiga tingkat (executive, per_chapter, key_points) — `SummaryService`, tab di halaman detail dokumen
+- [x] Adaptive Quiz Generator — generate soal JSON terstruktur (mcq/true_false/short_answer) dari chunk, `QuizGeneratorService`
+- [x] Pengerjaan & scoring kuis — `QuizGradingService`, review per soal, kuis lanjutan adaptif sesuai skor
+- [x] Statistik Tier 2 di dashboard (ringkasan dibuat, kuis, kuis dikerjakan, rata-rata skor)
+
+### Berikutnya (Tier 3)
 - [ ] Flashcard dari poin penting
-- [ ] Dashboard analitik (progres belajar)
+- [ ] Dashboard analitik mendalam (progres belajar)
 
 ---
 
@@ -308,6 +349,38 @@ Parameter kunci pipeline RAG (di-tune untuk demo, bisa di-tweak per use case):
 - `php artisan rag:verify-similarity` — uji pgvector dengan vector buatan
 - `php artisan rag:test-pipeline {document?}` — index dokumen ke Gemini API asli, lapor durasi + token + similarity ordering
 - `php artisan rag:test-chat {document} "pertanyaan"` — uji satu Q&A end-to-end
+
+---
+
+## 7c. Catatan Teknis Tier 2
+
+### Auto-Summary
+
+| Parameter        | Nilai                                              | Lokasi                              |
+| ---------------- | -------------------------------------------------- | ----------------------------------- |
+| Sumber teks      | `documents.extracted_text` (teks penuh)            | `SummaryService::generateAll`       |
+| Tipe ringkasan   | `executive`, `per_chapter`, `key_points`           | `Summary::TYPES`                    |
+| Batas input      | 60.000 karakter                                    | `SummaryService::MAX_INPUT_CHARS`   |
+| Model            | `gemini-2.5-flash-lite`                            | env `GEMINI_MODEL`                  |
+
+Chunk SENGAJA tidak dipakai untuk ringkasan: overlap 200 karakter membuat
+gabungan chunk menduplikasi teks. `extracted_text` adalah teks kanonik utuh,
+dan ringkasan tidak butuh embedding (nol kuota embedding).
+
+### Adaptive Quiz
+
+| Parameter             | Nilai                                          | Lokasi                                    |
+| --------------------- | ---------------------------------------------- | ----------------------------------------- |
+| Sumber soal           | sampel `document_chunks` (maks 12, merata)     | `QuizGeneratorService::sampleChunks`      |
+| Jumlah soal           | 3-15 (default UI 5)                            | `QuizGeneratorService` MIN/MAX_QUESTIONS  |
+| Tipe soal             | `mcq` (4 opsi), `true_false`, `short_answer`   | `QuizQuestion::TYPES`                     |
+| Output JSON           | `responseMimeType: application/json` + retry maks 2x | `QuizGeneratorService`              |
+| Scoring short_answer  | pencocokan teks ternormalisasi (tanpa AI)      | `QuizGradingService::shortAnswerMatches`  |
+| Adaptive difficulty   | skor ≥80 → hard, ≥50 → medium, <50 → easy      | `QuizGradingService::suggestDifficulty`   |
+
+**Trigger:** tombol "Buat Ringkasan" & "Buat Kuis" di halaman detail dokumen
+(`/documents/{document}`). Pengerjaan kuis di `/quizzes/{quiz}` (komponen
+`QuizRunner`, tiga mode: overview → taking → result).
 
 ---
 

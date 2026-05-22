@@ -146,12 +146,19 @@ composer dev
 | Chunking + Embedding ke pgvector | admin/user (trigger tombol) | Gemini `gemini-embedding-001`, 768 dim, HNSW cosine |
 | **Chat with Document (RAG)** | semua user | Query rewriting heuristik, top-K=8 retrieval dengan threshold, 3-tier answer policy, citation klikable, guardrail injection |
 
-### Roadmap berikutnya (Tier 2)
+### Sudah jadi (Tier 2)
 
-- Ringkasan otomatis per dokumen
-- Generate kuis dari dokumen (MCQ + essay)
+| Fitur | Akses | Catatan |
+| ----- | ----- | ------- |
+| **Auto-Summary** | semua user | Tiga tingkat ringkasan (eksekutif, per bagian, poin kunci) dari isi dokumen; hasil di-cache di DB, bisa dibuat ulang |
+| **Adaptive Quiz Generator** | semua user | Soal pilihan ganda / benar-salah / isian singkat dibuat dari chunk dokumen via JSON terstruktur Gemini; parsing aman + retry |
+| **Pengerjaan & Scoring Kuis** | semua user | Kerjakan kuis, skor otomatis, review jawaban per soal + penjelasan, kuis lanjutan adaptif menyesuaikan skor |
+| **Statistik belajar di dashboard** | semua user | Jumlah ringkasan, kuis dibuat, kuis dikerjakan, rata-rata skor |
+
+### Roadmap berikutnya (Tier 3)
+
 - Flashcard otomatis dari poin penting
-- Dashboard analitik (progres belajar)
+- Dashboard analitik mendalam (progres belajar)
 
 ---
 

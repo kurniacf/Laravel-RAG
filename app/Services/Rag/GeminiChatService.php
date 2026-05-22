@@ -2,6 +2,7 @@
 
 namespace App\Services\Rag;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -18,6 +19,16 @@ use RuntimeException;
  */
 class GeminiChatService
 {
+    /**
+     * Status HTTP transien yang layak dicoba ulang: rate limit (429) dan
+     * server sibuk / tidak tersedia (500, 502, 503, 504). Gemini sering balas
+     * 503 "UNAVAILABLE" saat beban tinggi — biasanya pulih dalam hitungan detik.
+     */
+    protected const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
+
+    /** Jumlah percobaan maksimal saat menghadapi error transien. */
+    protected const MAX_ATTEMPTS = 3;
+
     protected string $apiKey;
 
     protected string $model;
@@ -66,24 +77,25 @@ class GeminiChatService
             ],
         ];
 
-        $response = Http::withHeaders([
-            'x-goog-api-key' => $this->apiKey,
-            'Content-Type' => 'application/json',
-        ])
-            ->timeout($this->timeoutSeconds)
-            ->post($url, $payload);
-
-        if ($response->status() === 429) {
-            sleep(1);
-            $response = Http::withHeaders([
-                'x-goog-api-key' => $this->apiKey,=
-                'Content-Type' => 'application/json',
-            ])
-                ->timeout($this->timeoutSeconds)
-                ->post($url, $payload);
+        // Minta output dengan MIME type tertentu (mis. 'application/json' agar
+        // Gemini mengembalikan JSON murni tanpa pembungkus markdown).
+        if (! empty($options['response_mime_type'])) {
+            $payload['generationConfig']['responseMimeType'] = (string) $options['response_mime_type'];
         }
 
+        $response = $this->sendWithRetry($url, $payload);
+
         if ($response->failed()) {
+            // Error transien (rate limit / server sibuk) sudah dicoba ulang
+            // beberapa kali — beri pesan ramah, bukan dump JSON mentah.
+            if (in_array($response->status(), self::RETRYABLE_STATUSES, true)) {
+                throw new RuntimeException(sprintf(
+                    'Layanan Gemini sedang sibuk atau tidak tersedia (HTTP %d). '.
+                    'Coba lagi beberapa saat lagi.',
+                    $response->status(),
+                ));
+            }
+
             throw new RuntimeException(sprintf(
                 'Panggilan Gemini Chat gagal (HTTP %d): %s',
                 $response->status(),
@@ -104,5 +116,36 @@ class GeminiChatService
             'answer' => $answer,
             'tokens_used' => (int) (data_get($json, 'usageMetadata.totalTokenCount') ?? 0) ?: null,
         ];
+    }
+
+    /**
+     * Kirim request ke Gemini dengan retry untuk error transien (429 + 5xx).
+     * Backoff bertambah: jeda 1 detik, lalu 2 detik. Error permanen (mis. 400,
+     * 401, 404) langsung dikembalikan tanpa dicoba ulang.
+     */
+    protected function sendWithRetry(string $url, array $payload): Response
+    {
+        $response = null;
+
+        for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
+            $response = Http::withHeaders([
+                'x-goog-api-key' => $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])
+                ->timeout($this->timeoutSeconds)
+                ->post($url, $payload);
+
+            // Sukses atau error permanen → tidak perlu dicoba ulang.
+            if (! in_array($response->status(), self::RETRYABLE_STATUSES, true)) {
+                return $response;
+            }
+
+            // Masih ada sisa percobaan → tunggu sebentar lalu ulangi.
+            if ($attempt < self::MAX_ATTEMPTS) {
+                sleep($attempt);
+            }
+        }
+
+        return $response;
     }
 }

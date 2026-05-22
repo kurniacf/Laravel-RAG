@@ -43,3 +43,14 @@ test('dashboard admin menampilkan kartu Pengguna Terdaftar dan label Total Dokum
         ->assertSee('Total Dokumen')
         ->assertSee('Pengguna Terdaftar');
 });
+
+test('dashboard menampilkan seksi statistik Tier 2', function () {
+    $this->actingAs(User::factory()->create());
+
+    $this->get('/dashboard')
+        ->assertOk()
+        ->assertSee('Aktivitas Belajar')
+        ->assertSee('Ringkasan Dibuat')
+        ->assertSee('Kuis Dibuat')
+        ->assertSee('Rata-rata Skor Kuis');
+});

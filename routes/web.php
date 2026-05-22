@@ -4,6 +4,8 @@ use App\Livewire\Admin\UserManager;
 use App\Livewire\Chat\ChatIndex;
 use App\Livewire\Chat\ChatRoom;
 use App\Livewire\DocumentManager;
+use App\Livewire\DocumentShow;
+use App\Livewire\QuizRunner;
 use App\Livewire\SubjectManager;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
@@ -32,9 +34,13 @@ Route::get('subjects', SubjectManager::class)
     ->name('subjects.index');
 
 // Dokumen — user lihat miliknya, admin lihat semua (cek di komponen).
-Route::get('documents', DocumentManager::class)
-    ->middleware(['auth', 'verified'])
-    ->name('documents.index');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('documents', DocumentManager::class)->name('documents.index');
+    // Halaman detail dokumen: aksi AI per dokumen (vektor, ringkasan, kuis).
+    Route::get('documents/{document}', DocumentShow::class)->name('documents.show');
+    // Halaman pengerjaan kuis (overview, mengerjakan, hasil).
+    Route::get('quizzes/{quiz}', QuizRunner::class)->name('quizzes.show');
+});
 
 // Chat with Document (RAG).
 Route::middleware(['auth', 'verified'])->group(function () {

@@ -24,6 +24,12 @@ class AiJob extends Model
 
     public const TYPE_EMBED = 'embed';
 
+    /** Tier 2 — pembuatan ringkasan otomatis tiga tingkat. */
+    public const TYPE_SUMMARIZE = 'summarize';
+
+    /** Tier 2 — pembuatan soal kuis dari dokumen. */
+    public const TYPE_QUIZ_GEN = 'quiz_gen';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_RUNNING = 'running';

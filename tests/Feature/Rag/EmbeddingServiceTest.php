@@ -57,3 +57,16 @@ test('throw exception saat HTTP gagal (4xx atau 5xx)', function () {
     expect(fn () => $svc->embed('x'))
         ->toThrow(RuntimeException::class, 'HTTP 401');
 });
+
+test('embed mencoba ulang saat server balas 503 lalu berhasil', function () {
+    $fakeVector = array_fill(0, 768, 0.2);
+
+    // 503 transien di percobaan pertama, sukses di percobaan kedua.
+    Http::fakeSequence()
+        ->push('{"error":{"code":503,"status":"UNAVAILABLE"}}', 503)
+        ->push(['embedding' => ['values' => $fakeVector]], 200);
+
+    $vector = (new EmbeddingService())->embed('teks uji');
+
+    expect($vector)->toHaveCount(768);
+});

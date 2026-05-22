@@ -40,11 +40,6 @@ class DocumentManager extends Component
 
     public bool $showUploadModal = false;
 
-    /** Detail dokumen. */
-    public ?int $detailId = null;
-
-    public bool $showDetailModal = false;
-
     /** Konfirmasi hapus. */
     public ?int $deletingId = null;
 
@@ -162,29 +157,6 @@ class DocumentManager extends Component
 
         $this->closeUpload();
         $this->resetPage();
-    }
-
-    public function openDetail(int $id): void
-    {
-        $document = $this->findOwned($id);
-        $this->detailId = $document->id;
-        $this->showDetailModal = true;
-    }
-
-    public function closeDetail(): void
-    {
-        $this->detailId = null;
-        $this->showDetailModal = false;
-    }
-
-    #[Computed]
-    public function detailDocument(): ?Document
-    {
-        if ($this->detailId === null) {
-            return null;
-        }
-
-        return Document::with('subject', 'user')->find($this->detailId);
     }
 
     /**

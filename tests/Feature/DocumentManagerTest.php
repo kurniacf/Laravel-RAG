@@ -131,46 +131,6 @@ test('upload meng-increment documents_count pada subject yang dipilih', function
     expect($subject->fresh()->documents_count)->toBe(1);
 });
 
-test('user lain tidak boleh melihat detail dokumen orang lain', function () {
-    $owner = User::factory()->create();
-    $intruder = User::factory()->create();
-
-    $doc = Document::create([
-        'user_id' => $owner->id,
-        'title' => 'Rahasia',
-        'original_filename' => 'rahasia.pdf',
-        'file_path' => 'documents/'.$owner->id.'/dummy.pdf',
-        'file_size_bytes' => 1024,
-        'status' => Document::STATUS_READY,
-    ]);
-
-    $this->actingAs($intruder);
-
-    Livewire::test(DocumentManager::class)
-        ->call('openDetail', $doc->id)
-        ->assertStatus(403);
-});
-
-test('admin boleh melihat detail dokumen pengguna lain', function () {
-    $owner = User::factory()->create();
-    $admin = User::factory()->admin()->create();
-
-    $doc = Document::create([
-        'user_id' => $owner->id,
-        'title' => 'Materi Umum',
-        'original_filename' => 'm.pdf',
-        'file_path' => 'documents/'.$owner->id.'/d.pdf',
-        'file_size_bytes' => 2048,
-        'status' => Document::STATUS_READY,
-    ]);
-
-    $this->actingAs($admin);
-
-    Livewire::test(DocumentManager::class)
-        ->call('openDetail', $doc->id)
-        ->assertSet('detailId', $doc->id);
-});
-
 test('hapus dokumen menghapus file fisik dan men-decrement counter subject', function () {
     $user = User::factory()->create();
     $subject = Subject::factory()->create(['documents_count' => 5]);

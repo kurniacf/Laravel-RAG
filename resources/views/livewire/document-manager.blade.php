@@ -171,9 +171,9 @@
                                                 Chat
                                             </a>
                                         @endif
-                                        <button
-                                            type="button"
-                                            wire:click="openDetail({{ $document->id }})"
+                                        <a
+                                            href="{{ route('documents.show', $document) }}"
+                                            wire:navigate
                                             class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-3.5 w-3.5">
@@ -181,7 +181,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                             </svg>
                                             Detail
-                                        </button>
+                                        </a>
                                         <button
                                             type="button"
                                             wire:click="confirmDelete({{ $document->id }})"
@@ -565,84 +565,6 @@
                         </x-primary-button>
                     </div>
                 </form>
-            </div>
-        </div>
-    @endif
-
-    {{-- ───────── Modal Detail ───────── --}}
-    @if ($showDetailModal && $this->detailDocument)
-        @php $d = $this->detailDocument; @endphp
-        <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4" role="dialog" aria-modal="true">
-            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" wire:click="closeDetail"></div>
-            <div class="relative w-full max-w-3xl rounded-xl bg-white shadow-2xl ring-1 ring-slate-200">
-                <div class="flex items-start justify-between border-b border-slate-200 px-6 py-4">
-                    <div class="min-w-0">
-                        <h3 class="text-base font-semibold text-slate-900">{{ $d->title }}</h3>
-                        <p class="mt-1 truncate text-xs text-slate-500">{{ $d->original_filename }}</p>
-                    </div>
-                    <button type="button" wire:click="closeDetail" class="ml-3 inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" aria-label="Tutup">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                <div class="px-6 py-5">
-                    <dl class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wider text-slate-500">Status</dt>
-                            <dd class="mt-1">
-                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset {{ $statusBadge[$d->status] ?? '' }}">
-                                    {{ $d->statusLabel() }}
-                                </span>
-                            </dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wider text-slate-500">Halaman</dt>
-                            <dd class="mt-1 text-sm text-slate-900 tabular-nums">{{ $d->page_count ?? '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wider text-slate-500">Kata</dt>
-                            <dd class="mt-1 text-sm text-slate-900 tabular-nums">{{ $d->word_count ? number_format($d->word_count) : '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium uppercase tracking-wider text-slate-500">Ukuran</dt>
-                            <dd class="mt-1 text-sm text-slate-900 tabular-nums">{{ number_format($d->file_size_bytes / 1024, 1) }} KB</dd>
-                        </div>
-                    </dl>
-
-                    @if ($d->subject)
-                        <div class="mt-4">
-                            <dt class="text-xs font-medium uppercase tracking-wider text-slate-500">Mata Pelajaran</dt>
-                            <dd class="mt-1">
-                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium" style="background-color: {{ $d->subject->color_hex }}1a; color: {{ $d->subject->color_hex }};">
-                                    {{ $d->subject->name }}
-                                </span>
-                            </dd>
-                        </div>
-                    @endif
-
-                    @if ($d->error_message)
-                        <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3">
-                            <p class="text-xs font-semibold text-red-800">Pesan kesalahan:</p>
-                            <p class="mt-1 text-sm text-red-700">{{ $d->error_message }}</p>
-                        </div>
-                    @endif
-
-                    @if ($d->extracted_text)
-                        <div class="mt-5">
-                            <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Preview teks hasil ekstraksi</p>
-                            <div class="mt-2 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700">
-                                {{ Str::limit($d->extracted_text, 2000, '... [dipotong]') }}
-                            </div>
-                            <p class="mt-1 text-[10px] text-slate-400">Menampilkan 2.000 karakter pertama untuk preview.</p>
-                        </div>
-                    @endif
-                </div>
-
-                <div class="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
-                    <x-secondary-button type="button" wire:click="closeDetail">Tutup</x-secondary-button>
-                </div>
             </div>
         </div>
     @endif

@@ -22,6 +22,12 @@ class EmbeddingService
 
     public const TASK_QUERY = 'RETRIEVAL_QUERY';
 
+    /** Status HTTP transien yang layak dicoba ulang (rate limit + server sibuk). */
+    protected const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
+
+    /** Jumlah percobaan maksimal saat menghadapi error transien. */
+    protected const MAX_ATTEMPTS = 3;
+
     /**
      * Dimensi vector yang diharapkan (dibaca dari config saat boot).
      */
@@ -77,24 +83,42 @@ class EmbeddingService
     }
 
     /**
-     * Panggil API dengan retry sekali jika kena rate limit (429).
+     * Panggil API dengan retry untuk error transien (rate limit 429 + server
+     * sibuk 5xx, mis. 503 "UNAVAILABLE"). Backoff bertambah: 1 detik, lalu
+     * 2 detik. Error permanen (mis. 401, 404) langsung dilempar tanpa retry.
      */
     protected function callWithRetry(string $url, array $payload): Response
     {
-        $request = Http::withHeaders([
-            'x-goog-api-key' => $this->apiKey,
-            'Content-Type' => 'application/json',
-        ])->timeout($this->timeoutSeconds);
+        $response = null;
 
-        $response = $request->post($url, $payload);
+        for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
+            $response = Http::withHeaders([
+                'x-goog-api-key' => $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])
+                ->timeout($this->timeoutSeconds)
+                ->post($url, $payload);
 
-        if ($response->status() === 429) {
-            // Tunggu sebentar lalu coba sekali lagi (mitigasi rate limit ringan).
-            sleep(1);
-            $response = $request->post($url, $payload);
+            // Sukses atau error permanen → berhenti.
+            if (! in_array($response->status(), self::RETRYABLE_STATUSES, true)) {
+                break;
+            }
+
+            // Masih ada sisa percobaan → tunggu sebentar lalu ulangi.
+            if ($attempt < self::MAX_ATTEMPTS) {
+                sleep($attempt);
+            }
         }
 
         if ($response->failed()) {
+            if (in_array($response->status(), self::RETRYABLE_STATUSES, true)) {
+                throw new RuntimeException(sprintf(
+                    'Layanan embedding Gemini sedang sibuk atau tidak tersedia (HTTP %d). '.
+                    'Coba lagi beberapa saat lagi.',
+                    $response->status(),
+                ));
+            }
+
             throw new RuntimeException(sprintf(
                 'Panggilan embedding gagal (HTTP %d): %s',
                 $response->status(),
