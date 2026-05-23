@@ -35,6 +35,12 @@
         </svg>
         @break
 
+    @case('activity')
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" class="{{ $iconClass }}">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h3.75l2.25-7.5 4.5 15 2.25-7.5h3.75" />
+        </svg>
+        @break
+
     @default
         <span class="{{ $iconClass }} inline-block"></span>
 @endswitch

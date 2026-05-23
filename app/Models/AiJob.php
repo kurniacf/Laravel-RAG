@@ -41,6 +41,22 @@ class AiJob extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    public const STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_RUNNING,
+        self::STATUS_COMPLETED,
+        self::STATUS_FAILED,
+    ];
+
+    public const TYPES = [
+        self::TYPE_PARSE,
+        self::TYPE_CHUNK,
+        self::TYPE_EMBED,
+        self::TYPE_SUMMARIZE,
+        self::TYPE_QUIZ_GEN,
+        self::TYPE_FLASHCARD_GEN,
+    ];
+
     protected function casts(): array
     {
         return [
@@ -54,5 +70,54 @@ class AiJob extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class);
+    }
+
+    public function typeLabel(): string
+    {
+        return self::typeLabelFor($this->job_type);
+    }
+
+    public static function typeLabelFor(string $type): string
+    {
+        return match ($type) {
+            self::TYPE_PARSE => 'Ekstraksi PDF',
+            self::TYPE_CHUNK => 'Pemecahan Chunk',
+            self::TYPE_EMBED => 'Pembuatan Embedding',
+            self::TYPE_SUMMARIZE => 'Pembuatan Ringkasan',
+            self::TYPE_QUIZ_GEN => 'Pembuatan Kuis',
+            self::TYPE_FLASHCARD_GEN => 'Pembuatan Flashcard',
+            default => $type,
+        };
+    }
+
+    public function statusLabel(): string
+    {
+        return self::statusLabelFor($this->status);
+    }
+
+    public static function statusLabelFor(string $status): string
+    {
+        return match ($status) {
+            self::STATUS_PENDING => 'Menunggu',
+            self::STATUS_RUNNING => 'Berjalan',
+            self::STATUS_COMPLETED => 'Selesai',
+            self::STATUS_FAILED => 'Gagal',
+            default => $status,
+        };
+    }
+
+    /**
+     * Durasi job sebagai string ramah baca (mis. "1.2 s", "850 ms").
+     * Mengembalikan null bila belum diketahui.
+     */
+    public function durationLabel(): ?string
+    {
+        if ($this->duration_ms === null) {
+            return null;
+        }
+
+        return $this->duration_ms >= 1000
+            ? number_format($this->duration_ms / 1000, 2).' s'
+            : $this->duration_ms.' ms';
     }
 }

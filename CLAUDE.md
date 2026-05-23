@@ -36,6 +36,7 @@ fondasi itu (chat RAG, summary, quiz, flashcard).
 | Server lokal     | Laravel Herd                       | -       |
 | Testing          | Pest                               | 4.x     |
 | Embedding LLM    | Google Gemini `gemini-embedding-001` | 768 dim (via `outputDimensionality`) |
+| PDF generator    | `barryvdh/laravel-dompdf`          | 3.x     |
 
 ---
 
@@ -327,7 +328,12 @@ Hal-hal yang gampang menjebak:
 - [x] Spaced Repetition (algoritma SM-2) — `SrsService`
 - [x] Progress Dashboard dengan analytics chart (Chart.js)
 
-Seluruh roadmap PintarBelajar AI tuntas (Tier 1–3).
+### Fitur Pelengkap — UX & Audit (sudah selesai)
+- [x] Riwayat Aktivitas (AI Jobs Monitor) — `ActivityHistory` Livewire, halaman `/activity`. Menampilkan tabel `ai_jobs` (jenis, status, durasi, token), filter status/jenis/pengguna (admin), search judul dokumen, statistik 4 kartu, modal detail per job. Scoping role lewat `whereHas('document', user_id)`.
+- [x] Export PDF Ringkasan & Kuis — `PdfExportController` + `barryvdh/laravel-dompdf`. Routes `documents.summary.pdf` & `quizzes.export.pdf` (query `key=0|1`). Template Blade `pdf/layout.blade.php`, `pdf/summary.blade.php`, `pdf/quiz.blade.php` (inline CSS, font DejaVu Sans → karakter Indonesia aman).
+- [x] Pencarian Global — `GlobalSearch` Livewire di topbar `layouts/app.blade.php`. Live-search debounce 300ms lintas dokumen/mata pelajaran/kuis. Min 2 karakter, limit 5/kategori, escape wildcard `%`/`_`, hak akses lewat scope per query.
+
+Seluruh roadmap PintarBelajar AI tuntas (Tier 1–3 + Pelengkap).
 
 ---
 
@@ -435,6 +441,48 @@ UI ke skala kualitas SM-2 (0-5):
 **Trigger flashcard:** tombol "Buat Flashcard" di halaman detail dokumen;
 sesi belajar di `/documents/{document}/flashcards` (komponen `FlashcardStudy`,
 mode: study → done, atau empty).
+
+---
+
+## 7e. Catatan Teknis Fitur Pelengkap
+
+### Riwayat Aktivitas (`/activity`)
+
+| Parameter         | Nilai                                              | Lokasi                                |
+| ----------------- | -------------------------------------------------- | ------------------------------------- |
+| Sumber data       | tabel `ai_jobs` (eager load `document.subject`)    | `ActivityHistory::jobs`               |
+| Per halaman       | 15                                                 | `ActivityHistory::jobs` paginate      |
+| Scoping role      | `whereHas('document', user_id = me)` untuk non-admin | `ActivityHistory::baseQuery`        |
+| Statistik         | satu query agregat `selectRaw COUNT/SUM CASE WHEN` | `ActivityHistory::stats`              |
+| Filter            | status (4), job_type (6), user (admin only), search (title/filename) | komponen + view |
+
+Statistik dihitung dari `baseQuery()` (sebelum filter UI) supaya angka mencerminkan total job yang BOLEH dilihat user, bukan total yang sedang difilter.
+
+### Export PDF (`barryvdh/laravel-dompdf`)
+
+| Parameter         | Nilai                                              | Lokasi                                |
+| ----------------- | -------------------------------------------------- | ------------------------------------- |
+| Engine            | DomPDF (pure PHP, tanpa binary eksternal)          | -                                     |
+| Paper             | A4                                                 | `PdfExportController::*`              |
+| Font              | DejaVu Sans (default DomPDF — UTF-8 aman)          | `resources/views/pdf/layout.blade.php` |
+| Routes            | `documents.summary.pdf`, `quizzes.export.pdf`      | `routes/web.php`                      |
+| Mode kuis         | `?key=1` (lengkap dengan kunci) atau `?key=0` (lembar soal) | `PdfExportController::quiz`  |
+| Nama file         | `Str::slug($title)` + suffix deskriptif (`-kunci-jawaban` / `-lembar-soal`) | controller |
+
+**JANGAN** pakai `@php ... @endphp` block dengan arrow function (`fn ($x) => ...`) di Blade — directive `@php` di-skip oleh compiler, `@endphp` tetap dikonversi → fatal `ParseError` di compiled view. Pakai `@foreach` dengan loop index untuk indexing, atau hitung di komponen lalu pass ke view.
+
+### Pencarian Global (topbar)
+
+| Parameter             | Nilai                                          | Lokasi                                |
+| --------------------- | ---------------------------------------------- | ------------------------------------- |
+| Min query length      | 2 karakter                                     | `GlobalSearch::MIN_QUERY_LENGTH`      |
+| Hasil per kategori    | 5                                              | `GlobalSearch::RESULTS_PER_CATEGORY`  |
+| Entitas               | dokumen (title, filename), subject (name), kuis (title atau title dokumen induk) | computed properties |
+| Debounce              | 300ms                                          | `wire:model.live.debounce.300ms`      |
+| Scoping role          | dokumen & kuis di-scope ke `user_id` non-admin; subject bebas | `GlobalSearch::documents/quizzes` |
+| Escape wildcard       | `%` `_` di-escape sebelum LIKE                 | `GlobalSearch::likeTerm`              |
+
+Subject tidak di-scope per user — sesuai CLAUDE.md §5: user biasa boleh melihat daftar mata pelajaran. Pencarian flashcard & summary di-skip karena tidak punya field teks bebas yang bermakna untuk picker.
 
 ---
 

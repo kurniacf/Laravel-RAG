@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\PdfExportController;
+use App\Livewire\ActivityHistory;
 use App\Livewire\Admin\UserManager;
 use App\Livewire\Chat\ChatIndex;
 use App\Livewire\Chat\ChatRoom;
@@ -49,6 +51,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('chat', ChatIndex::class)->name('chat.index');
     Route::get('chat/{session}', ChatRoom::class)->name('chat.show');
+});
+
+// Riwayat Aktivitas — log pekerjaan AI (parse/chunk/embed/summarize/quiz_gen/flashcard_gen).
+// User biasa hanya lihat job atas dokumennya sendiri; admin lihat semua (scoping di komponen).
+Route::get('activity', ActivityHistory::class)
+    ->middleware(['auth', 'verified'])
+    ->name('activity.index');
+
+// Export PDF — ringkasan dokumen & lembar kuis.
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('documents/{document}/summary.pdf', [PdfExportController::class, 'summary'])
+        ->name('documents.summary.pdf');
+    Route::get('quizzes/{quiz}/export.pdf', [PdfExportController::class, 'quiz'])
+        ->name('quizzes.export.pdf');
 });
 
 // Manajemen Pengguna — hanya admin (Gate manage-users di AppServiceProvider).

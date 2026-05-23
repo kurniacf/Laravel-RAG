@@ -22,6 +22,7 @@
 | Database         | PostgreSQL                             | 16      | Storage utama; container Docker image `pgvector/pgvector:pg16` |
 | Vector store     | pgvector                               | 0.8.2   | Extension PostgreSQL untuk kolom `vector(768)` + HNSW index cosine |
 | PDF parser       | `smalot/pdfparser`                     | 2.x     | Ekstraksi teks dari PDF saat upload |
+| PDF generator    | `barryvdh/laravel-dompdf`              | 3.x     | Render Blade → PDF untuk export ringkasan & kuis (pure PHP, tanpa binary) |
 | Embedding model  | Gemini `gemini-embedding-001`          | 768 dim | Ubah teks chunk → vector 768 dim via `outputDimensionality` |
 | Chat model       | Gemini `gemini-2.5-flash-lite`         | -       | Generate jawaban RAG (cepat & hemat token) |
 | Web server lokal | Laravel Herd                           | -       | Resolve domain `*.test` otomatis |
@@ -164,9 +165,17 @@ composer dev
 | **Spaced Repetition (SM-2)** | semua user | Penjadwalan ulang kartu adaptif ala Anki — kartu sulit muncul lebih sering |
 | **Progress Dashboard** | semua user | Analytics chart (Chart.js): aktivitas kuis, performa skor, distribusi dokumen per mata pelajaran |
 
-Seluruh roadmap PintarBelajar AI sudah **tuntas** — enam fitur AI/belajar inti:
-Chat RAG, Auto-Summary, Adaptive Quiz, Flashcard, Spaced Repetition, dan
-Progress Dashboard.
+### Fitur Pelengkap (UX & Audit)
+
+| Fitur | Akses | Catatan |
+| ----- | ----- | ------- |
+| **Riwayat Aktivitas (AI Jobs Monitor)** | user (miliknya) · admin (semua) | Halaman audit semua pekerjaan AI: jenis, status, durasi, token. Filter status/jenis/pengguna, statistik 4 kartu, modal detail dengan pesan error |
+| **Export PDF Ringkasan** | semua user | Unduh tiga tingkat ringkasan dalam satu PDF rapi (header brand, footer page counter) |
+| **Export PDF Kuis** | semua user | Dua mode: lengkap (soal + kunci + pembahasan) atau lembar soal saja (siap cetak & dikerjakan) |
+| **Pencarian Global** | semua user (scoped) | Kotak pencarian di topbar — cari lintas dokumen, mata pelajaran, dan kuis dalam satu dropdown |
+
+Seluruh roadmap PintarBelajar AI sudah **tuntas** — enam fitur AI/belajar inti
+plus tiga fitur pelengkap (audit, export, pencarian).
 
 ---
 

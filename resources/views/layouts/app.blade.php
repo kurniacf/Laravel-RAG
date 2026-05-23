@@ -49,12 +49,15 @@
                     </svg>
                 </button>
 
+                {{-- Pencarian global — selalu tampil di topbar untuk semua user login. --}}
+                <div class="flex flex-1 items-center">
+                    <livewire:global-search />
+                </div>
+
                 @if (isset($header))
-                    <div class="flex flex-1 items-center text-sm font-medium text-slate-600">
+                    <div class="hidden flex-1 items-center text-sm font-medium text-slate-600 md:flex">
                         {{ $header }}
                     </div>
-                @else
-                    <div class="flex-1"></div>
                 @endif
 
                 <div class="flex items-center gap-3">

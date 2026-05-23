@@ -53,6 +53,13 @@ new class extends Component
                     'match' => ['chat.*'],
                     'visible' => fn ($u) => true,
                 ],
+                [
+                    'label' => 'Riwayat Aktivitas',
+                    'route' => 'activity.index',
+                    'icon'  => 'activity',
+                    'match' => ['activity.*'],
+                    'visible' => fn ($u) => true,
+                ],
             ],
         ],
         [

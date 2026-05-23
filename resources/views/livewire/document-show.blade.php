@@ -181,18 +181,32 @@
                 </div>
 
                 @if ($hasSummaries && $d->isReady())
-                    <button
-                        type="button"
-                        wire:click="generateSummary"
-                        wire:loading.attr="disabled"
-                        wire:target="generateSummary"
-                        class="inline-flex items-center gap-1.5 self-start rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-3.5 w-3.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                        </svg>
-                        Buat ulang
-                    </button>
+                    <div class="flex flex-wrap items-center gap-2 self-start">
+                        <a
+                            href="{{ route('documents.summary.pdf', $d) }}"
+                            target="_blank"
+                            rel="noopener"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100"
+                            title="Unduh ringkasan sebagai PDF"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-3.5 w-3.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            Unduh PDF
+                        </a>
+                        <button
+                            type="button"
+                            wire:click="generateSummary"
+                            wire:loading.attr="disabled"
+                            wire:target="generateSummary"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-3.5 w-3.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            </svg>
+                            Buat ulang
+                        </button>
+                    </div>
                 @endif
             </div>
 
@@ -445,6 +459,48 @@
                                     >
                                         Kerjakan
                                     </a>
+                                    {{-- Dropdown unduh PDF: lengkap (key=1) vs lembar soal saja (key=0). --}}
+                                    <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+                                        <button
+                                            type="button"
+                                            @click="open = ! open"
+                                            class="inline-flex items-center gap-1.5 rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-100"
+                                            title="Unduh kuis sebagai PDF"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-3.5 w-3.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                            </svg>
+                                            PDF
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-3 w-3" :class="open && 'rotate-180'">
+                                                <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                        <div
+                                            x-show="open"
+                                            x-cloak
+                                            x-transition.opacity.duration.100ms
+                                            class="absolute right-0 z-10 mt-1 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                        >
+                                            <a
+                                                href="{{ route('quizzes.export.pdf', ['quiz' => $quiz, 'key' => 1]) }}"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="block px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                                            >
+                                                <span class="font-semibold">Lengkap</span>
+                                                <span class="block text-[10px] text-slate-500">Soal + kunci jawaban + pembahasan</span>
+                                            </a>
+                                            <a
+                                                href="{{ route('quizzes.export.pdf', ['quiz' => $quiz, 'key' => 0]) }}"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="block border-t border-slate-100 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                                            >
+                                                <span class="font-semibold">Lembar Soal</span>
+                                                <span class="block text-[10px] text-slate-500">Tanpa kunci, siap dicetak & dikerjakan</span>
+                                            </a>
+                                        </div>
+                                    </div>
                                     <button
                                         type="button"
                                         wire:click="deleteQuiz({{ $quiz->id }})"
