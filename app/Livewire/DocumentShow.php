@@ -3,8 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\Document;
+use App\Models\Flashcard;
 use App\Models\Quiz;
 use App\Models\Summary;
+use App\Services\Flashcard\FlashcardGeneratorService;
 use App\Services\Quiz\QuizGeneratorService;
 use App\Services\Rag\DocumentIndexer;
 use App\Services\Summary\SummaryService;
@@ -31,6 +33,9 @@ class DocumentShow extends Component
     public int $quizQuestionCount = 5;
 
     public string $quizDifficulty = Quiz::DIFFICULTY_MEDIUM;
+
+    /** Form pembuatan flashcard. */
+    public int $flashcardCount = 10;
 
     public function mount(Document $document): void
     {
@@ -59,6 +64,17 @@ class DocumentShow extends Component
     public function quizzes(): Collection
     {
         return $this->document->quizzes()->latest()->get();
+    }
+
+    /**
+     * Daftar flashcard milik dokumen ini, urut posisi.
+     *
+     * @return Collection<int, Flashcard>
+     */
+    #[Computed]
+    public function flashcards(): Collection
+    {
+        return $this->document->flashcards()->orderBy('position')->get();
     }
 
     /**
@@ -127,6 +143,44 @@ class DocumentShow extends Component
             unset($this->quizzes);
             session()->flash('status', 'Kuis telah dihapus.');
         }
+    }
+
+    /**
+     * Trigger eksplisit: buat flashcard baru (di-append) dari dokumen.
+     */
+    public function generateFlashcards(FlashcardGeneratorService $service): void
+    {
+        $this->authorizeAccess($this->document);
+
+        if (($this->document->total_chunks ?? 0) < 1) {
+            session()->flash('error', 'Proses dokumen ke vector terlebih dahulu sebelum membuat flashcard.');
+
+            return;
+        }
+
+        $this->validate([
+            'flashcardCount' => ['required', 'integer', 'min:5', 'max:20'],
+        ]);
+
+        try {
+            $cards = $service->generate($this->document, $this->flashcardCount);
+            unset($this->flashcards);
+            session()->flash('status', $cards->count().' flashcard berhasil dibuat.');
+        } catch (Throwable $e) {
+            session()->flash('error', 'Gagal membuat flashcard: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Hapus seluruh flashcard dokumen ini (riwayat review ikut terhapus — cascade).
+     */
+    public function deleteFlashcards(): void
+    {
+        $this->authorizeAccess($this->document);
+
+        $this->document->flashcards()->delete();
+        unset($this->flashcards);
+        session()->flash('status', 'Seluruh flashcard dokumen ini telah dihapus.');
     }
 
     /**

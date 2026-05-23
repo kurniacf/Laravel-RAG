@@ -5,6 +5,7 @@ use App\Livewire\Chat\ChatIndex;
 use App\Livewire\Chat\ChatRoom;
 use App\Livewire\DocumentManager;
 use App\Livewire\DocumentShow;
+use App\Livewire\FlashcardStudy;
 use App\Livewire\QuizRunner;
 use App\Livewire\SubjectManager;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('documents/{document}', DocumentShow::class)->name('documents.show');
     // Halaman pengerjaan kuis (overview, mengerjakan, hasil).
     Route::get('quizzes/{quiz}', QuizRunner::class)->name('quizzes.show');
+    // Halaman belajar flashcard (flip + spaced repetition) per dokumen.
+    Route::get('documents/{document}/flashcards', FlashcardStudy::class)->name('flashcards.study');
 });
 
 // Chat with Document (RAG).

@@ -12,6 +12,9 @@
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- Chart.js via CDN untuk grafik analitik dashboard — tanpa dependency build npm. --}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js" defer></script>
 </head>
 <body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
 

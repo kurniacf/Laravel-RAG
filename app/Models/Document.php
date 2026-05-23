@@ -81,6 +81,12 @@ class Document extends Model
         return $this->hasMany(Quiz::class);
     }
 
+    /** Flashcard yang dihasilkan dari dokumen ini. */
+    public function flashcards(): HasMany
+    {
+        return $this->hasMany(Flashcard::class);
+    }
+
     public function isReady(): bool
     {
         return $this->status === self::STATUS_READY;

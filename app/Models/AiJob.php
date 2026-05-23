@@ -30,6 +30,9 @@ class AiJob extends Model
     /** Tier 2 — pembuatan soal kuis dari dokumen. */
     public const TYPE_QUIZ_GEN = 'quiz_gen';
 
+    /** Tier 3 — pembuatan flashcard dari dokumen. */
+    public const TYPE_FLASHCARD_GEN = 'flashcard_gen';
+
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_RUNNING = 'running';

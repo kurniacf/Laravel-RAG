@@ -42,12 +42,15 @@ new class extends Component
                     'label' => 'Dokumen',
                     'route' => 'documents.index',
                     'icon'  => 'document',
+                    // Tetap tersorot di halaman detail dokumen, kuis, dan flashcard.
+                    'match' => ['documents.*', 'quizzes.*', 'flashcards.*'],
                     'visible' => fn ($u) => true,
                 ],
                 [
                     'label' => 'Chat',
                     'route' => 'chat.index',
                     'icon'  => 'chat',
+                    'match' => ['chat.*'],
                     'visible' => fn ($u) => true,
                 ],
             ],
@@ -106,7 +109,8 @@ new class extends Component
                         @foreach ($visibleItems as $item)
                             @php
                                 $hasRoute = \Illuminate\Support\Facades\Route::has($item['route']);
-                                $isActive = $hasRoute && request()->routeIs($item['route']);
+                                $matchPatterns = $item['match'] ?? [$item['route']];
+                                $isActive = $hasRoute && request()->routeIs(...$matchPatterns);
                             @endphp
                             <li>
                                 @if ($hasRoute)

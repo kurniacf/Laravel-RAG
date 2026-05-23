@@ -140,7 +140,7 @@ dengan operator `vector_cosine_ops` dibuat di migration (pgsql only).
 | ------------- | ------------ | ------------------------------------------------ |
 | id            | bigserial PK |                                                  |
 | document_id   | FK documents | cascade                                          |
-| job_type      | enum         | `parse`, `chunk`, `embed`, `summarize`, `quiz_gen` |
+| job_type      | enum         | `parse`, `chunk`, `embed`, `summarize`, `quiz_gen`, `flashcard_gen` |
 | status        | enum         | `pending`, `running`, `completed`, `failed`      |
 | started_at    | timestamp    | nullable                                         |
 | finished_at   | timestamp    | nullable                                         |
@@ -205,6 +205,16 @@ CASCADE` kecuali disebut lain; CHECK constraint enum hanya di PostgreSQL.
 - **`quiz_answers`** — `quiz_attempt_id`, `quiz_question_id`,
   `selected_option_id` (mcq/true_false), `answer_text` (short_answer),
   `is_correct`.
+
+### 4.9 Tabel Tier 3 — Flashcard & SRS
+
+- **`flashcards`** — kartu belajar. Kolom: `document_id`, `user_id`,
+  `source_chunk_id` (FK `document_chunks`, `nullOnDelete`), `front_text`,
+  `back_text`, `difficulty` (`easy` | `medium` | `hard`), `position`.
+- **`flashcard_reviews`** — state Spaced Repetition (SM-2) per user per kartu.
+  Kolom: `flashcard_id`, `user_id`, `ease_factor` (decimal, default 2.50),
+  `interval_days`, `repetitions`, `quality` (0-5), `last_reviewed_at`,
+  `next_review_at`. Unique `(flashcard_id, user_id)`.
 
 ---
 
@@ -311,9 +321,13 @@ Hal-hal yang gampang menjebak:
 - [x] Pengerjaan & scoring kuis — `QuizGradingService`, review per soal, kuis lanjutan adaptif sesuai skor
 - [x] Statistik Tier 2 di dashboard (ringkasan dibuat, kuis, kuis dikerjakan, rata-rata skor)
 
-### Berikutnya (Tier 3)
-- [ ] Flashcard dari poin penting
-- [ ] Dashboard analitik mendalam (progres belajar)
+### Tier 3 — Flashcard & Analytics (sudah selesai)
+- [x] Generate flashcard dari dokumen (JSON terstruktur) — `FlashcardGeneratorService`
+- [x] Antarmuka belajar flashcard dengan animasi flip 3D — `FlashcardStudy`
+- [x] Spaced Repetition (algoritma SM-2) — `SrsService`
+- [x] Progress Dashboard dengan analytics chart (Chart.js)
+
+Seluruh roadmap PintarBelajar AI tuntas (Tier 1–3).
 
 ---
 
@@ -381,6 +395,46 @@ dan ringkasan tidak butuh embedding (nol kuota embedding).
 **Trigger:** tombol "Buat Ringkasan" & "Buat Kuis" di halaman detail dokumen
 (`/documents/{document}`). Pengerjaan kuis di `/quizzes/{quiz}` (komponen
 `QuizRunner`, tiga mode: overview → taking → result).
+
+---
+
+## 7d. Catatan Teknis Tier 3
+
+### Flashcard
+
+| Parameter   | Nilai                                          | Lokasi                                      |
+| ----------- | ---------------------------------------------- | ------------------------------------------- |
+| Sumber kartu| sampel `document_chunks` (maks 12)             | `FlashcardGeneratorService::sampleChunks`   |
+| Jumlah kartu| 5-20 (default UI 10)                           | `FlashcardGeneratorService` MIN/MAX_CARDS   |
+| Output JSON | `responseMimeType: application/json` + retry 2x| `FlashcardGeneratorService`                 |
+| Generate    | bersifat APPEND (tidak menghapus kartu lama)   | `FlashcardGeneratorService::persist`        |
+
+### Spaced Repetition — SM-2
+
+`SrsService` mengimplementasi algoritma SuperMemo-2. Pemetaan tombol penilaian
+UI ke skala kualitas SM-2 (0-5):
+
+| Tombol  | Kualitas | Efek                                                          |
+| ------- | -------- | ------------------------------------------------------------- |
+| Sulit   | 2        | q < 3 = gagal → repetisi & interval di-reset (muncul lagi besok) |
+| Cukup   | 4        | lulus — interval tumbuh normal                                |
+| Mudah   | 5        | lulus — interval tumbuh paling cepat                          |
+
+- Kartu "jatuh tempo" = `next_review_at <= sekarang` atau belum pernah direview.
+- Kartu "dikuasai" = `repetitions >= 3` (`FlashcardReview::MASTERED_REPETITIONS`).
+- Ease factor minimum 1.3.
+
+### Dashboard Analytics
+
+- Library chart: **Chart.js 4.4.6 via CDN** (di `<head>` layout, `defer`) —
+  tanpa dependency build npm. Dirender lewat Alpine `x-init` + `new Chart()`,
+  dibungkus `wire:ignore`.
+- Tiga chart, semua data agregat dari DB (tanpa AI): bar aktivitas kuis 14
+  hari, line skor kuis terakhir, doughnut distribusi dokumen per mata pelajaran.
+
+**Trigger flashcard:** tombol "Buat Flashcard" di halaman detail dokumen;
+sesi belajar di `/documents/{document}/flashcards` (komponen `FlashcardStudy`,
+mode: study → done, atau empty).
 
 ---
 

@@ -31,3 +31,39 @@
         font-variant-numeric: tabular-nums;
     }
 }
+
+/*
+| Kartu flashcard dengan animasi flip 3D.
+| Toggle class `.is-flipped` pada `.flashcard` untuk membalik kartu.
+*/
+.flashcard {
+    perspective: 1200px;
+}
+
+.flashcard-inner {
+    position: relative;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.flashcard.is-flipped .flashcard-inner {
+    transform: rotateY(180deg);
+}
+
+.flashcard-face {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+.flashcard-back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+}
+
+/* Hormati preferensi pengguna yang mengurangi animasi. */
+@media (prefers-reduced-motion: reduce) {
+    .flashcard-inner {
+        transition: none;
+    }
+}

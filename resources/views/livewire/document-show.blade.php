@@ -461,6 +461,132 @@
             @endunless
         </div>
 
+        {{-- ───────── Flashcard ───────── --}}
+        <div class="relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            {{-- Overlay loading saat generate flashcard. --}}
+            <div
+                wire:loading.flex
+                wire:target="generateFlashcards"
+                class="absolute inset-0 z-20 flex-col items-center justify-center gap-3 bg-white/90 backdrop-blur-sm"
+            >
+                <svg class="h-8 w-8 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4l3-3-3-3v4a8 8 0 1 0 8 8h-4l3 3 3-3h-4a8 8 0 0 1-8 8z"></path>
+                </svg>
+                <p
+                    class="text-sm font-medium text-slate-700"
+                    x-data="{
+                        msgs: [
+                            'Mengambil potongan materi...',
+                            'Menyusun kartu depan-belakang...',
+                            'Memvalidasi kartu...',
+                            'Menyimpan flashcard...',
+                        ],
+                        idx: 0,
+                    }"
+                    x-init="setInterval(() => idx = (idx + 1) % msgs.length, 2400)"
+                    x-text="msgs[idx]"
+                ></p>
+                <p class="text-xs text-slate-400">Memanggil Gemini — mohon tunggu beberapa detik.</p>
+            </div>
+
+            <div class="border-b border-slate-200 px-6 py-4">
+                <h2 class="flex items-center gap-2 text-base font-semibold text-slate-900">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor" class="h-5 w-5 text-brand-600">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.429 9.75 2.25 12l4.179 2.25m0-4.5 5.571 3 5.571-3m-11.142 0L2.25 7.5 12 2.25l9.75 5.25-4.179 2.25m0 0L21.75 12l-4.179 2.25m0 0 4.179 2.25L12 21.75 2.25 16.5l4.179-2.25" />
+                    </svg>
+                    Flashcard
+                </h2>
+                <p class="mt-0.5 text-xs text-slate-500">Kartu belajar (depan-belakang) yang dibuat otomatis dari isi dokumen.</p>
+            </div>
+
+            @unless ($hasChunks)
+                <div class="px-6 py-10 text-center">
+                    <p class="text-sm font-medium text-slate-700">Flashcard belum bisa dibuat</p>
+                    <p class="mt-1 text-sm text-slate-500">
+                        Kartu disusun dari potongan (chunk) dokumen. Klik
+                        <span class="font-medium text-slate-700">"Proses ke Vector"</span> di atas terlebih dahulu.
+                    </p>
+                </div>
+            @else
+                {{-- Form pembuatan flashcard. --}}
+                <div class="border-b border-slate-200 bg-slate-50/70 px-6 py-4">
+                    <div class="flex flex-wrap items-end gap-3">
+                        <div>
+                            <label for="fc-count" class="text-xs font-medium text-slate-600">Jumlah kartu</label>
+                            <select
+                                id="fc-count"
+                                wire:model="flashcardCount"
+                                class="mt-1 block rounded-lg border-slate-300 bg-white py-2 pl-3 pr-8 text-sm text-slate-900 shadow-sm transition focus:border-brand-600 focus:ring-2 focus:ring-brand-600/30"
+                            >
+                                <option value="5">5 kartu</option>
+                                <option value="10">10 kartu</option>
+                                <option value="15">15 kartu</option>
+                            </select>
+                        </div>
+                        <button
+                            type="button"
+                            wire:click="generateFlashcards"
+                            wire:loading.attr="disabled"
+                            wire:target="generateFlashcards"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 disabled:opacity-60"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-4 w-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                            </svg>
+                            {{ $this->flashcards->isEmpty() ? 'Buat Flashcard' : 'Tambah Kartu' }}
+                        </button>
+                    </div>
+                    @error('flashcardCount') <p class="mt-1.5 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                {{-- Daftar kartu. --}}
+                @if ($this->flashcards->isEmpty())
+                    <div class="px-6 py-10 text-center">
+                        <p class="text-sm font-medium text-slate-700">Belum ada flashcard</p>
+                        <p class="mt-1 text-xs text-slate-500">Pilih jumlah kartu lalu klik "Buat Flashcard".</p>
+                    </div>
+                @else
+                    <div class="px-6 py-4">
+                        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+                            <p class="text-sm font-medium text-slate-700">{{ $this->flashcards->count() }} kartu tersimpan</p>
+                            <div class="flex items-center gap-1">
+                                <a
+                                    href="{{ route('flashcards.study', $d) }}"
+                                    wire:navigate
+                                    class="inline-flex items-center gap-1.5 rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-brand-700"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" class="h-3.5 w-3.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                                    </svg>
+                                    Belajar Flashcard
+                                </a>
+                                <button
+                                    type="button"
+                                    wire:click="deleteFlashcards"
+                                    wire:confirm="Hapus seluruh flashcard dokumen ini beserta riwayat belajarnya?"
+                                    class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50"
+                                >
+                                    Hapus Semua
+                                </button>
+                            </div>
+                        </div>
+                        <ul class="max-h-64 space-y-1.5 overflow-y-auto">
+                            @foreach ($this->flashcards as $i => $card)
+                                <li wire:key="fc-{{ $card->id }}" class="flex items-center gap-2.5 rounded-lg border border-slate-200 px-3 py-2">
+                                    <span class="w-5 flex-none text-right text-xs font-semibold tabular-nums text-slate-400">{{ $i + 1 }}</span>
+                                    <span class="min-w-0 flex-1 truncate text-sm text-slate-700">{{ $card->front_text }}</span>
+                                    <span class="inline-flex flex-none items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset {{ $diffBadge[$card->difficulty] ?? '' }}">
+                                        {{ $card->difficultyLabel() }}
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+            @endunless
+        </div>
+
         {{-- ───────── Teks hasil ekstraksi ───────── --}}
         @php
             $extractedText = (string) ($d->extracted_text ?? '');

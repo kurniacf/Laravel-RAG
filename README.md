@@ -155,10 +155,18 @@ composer dev
 | **Pengerjaan & Scoring Kuis** | semua user | Kerjakan kuis, skor otomatis, review jawaban per soal + penjelasan, kuis lanjutan adaptif menyesuaikan skor |
 | **Statistik belajar di dashboard** | semua user | Jumlah ringkasan, kuis dibuat, kuis dikerjakan, rata-rata skor |
 
-### Roadmap berikutnya (Tier 3)
+### Sudah jadi (Tier 3)
 
-- Flashcard otomatis dari poin penting
-- Dashboard analitik mendalam (progres belajar)
+| Fitur | Akses | Catatan |
+| ----- | ----- | ------- |
+| **Flashcard Generator** | semua user | Kartu depan-belakang dibuat otomatis dari chunk dokumen via JSON terstruktur Gemini |
+| **Belajar Flashcard (flip)** | semua user | Antarmuka flip kartu 3D, penilaian diri (Sulit/Cukup/Mudah), sadar `prefers-reduced-motion` |
+| **Spaced Repetition (SM-2)** | semua user | Penjadwalan ulang kartu adaptif ala Anki — kartu sulit muncul lebih sering |
+| **Progress Dashboard** | semua user | Analytics chart (Chart.js): aktivitas kuis, performa skor, distribusi dokumen per mata pelajaran |
+
+Seluruh roadmap PintarBelajar AI sudah **tuntas** — enam fitur AI/belajar inti:
+Chat RAG, Auto-Summary, Adaptive Quiz, Flashcard, Spaced Repetition, dan
+Progress Dashboard.
 
 ---
 
